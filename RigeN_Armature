@@ -1,0 +1,99 @@
+import bpy, mathutils
+ 
+def createArmature(origin):
+    # Create armature and object
+    amt = bpy.data.armatures.new('RigeN.Armature')
+    rig = bpy.data.objects.new('RigeN', amt)
+    rig.location = origin
+    rig.show_x_ray = True
+    amt.show_names = True
+    # Link object to scene
+    scn = bpy.context.scene
+    scn.objects.link(rig)
+    scn.objects.active = rig
+    scn.update()
+ 
+    # Create bones
+    bpy.ops.object.editmode_toggle()
+    #original does not work??!!    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.context.object.data.use_mirror_x = True
+
+    torso = amt.edit_bones.new('Torso')
+    torso.head = (0, 0, 3.5)
+    torso.tail = (0, 0, 6)
+    torso.use_deform = False
+    
+    ### LEFT LEG ###
+    thighL = amt.edit_bones.new('Thigh.L')
+    thighL.head = (1.5, 0.0, 4.0)
+    thighL.tail = (1.5, -0.2, 2.0)
+    thighL.parent = torso
+    thighL.use_connect = False
+    
+    shinL = amt.edit_bones.new('Shin.L')
+    shinL.head = (1.5, -0.2, 2.0)
+    shinL.tail = (1.5, 0.0, 0.5)
+    shinL.parent = thighL
+    shinL.use_connect = True
+    
+    footL = amt.edit_bones.new('Foot.L')
+    footL.head = (1.5, 0.0, 0.5)
+    footL.tail = (1.5, -1.0, 0.0)
+    footL.parent = shinL
+    footL.use_connect = True
+    
+    toeL = amt.edit_bones.new('Toe.L')
+    toeL.head = (1.5, 0.0, 0.0)
+    toeL.tail = (1.5, -1.7, 0.0)
+    toeL.parent = footL
+    toeL.use_connect = True
+    
+    heelL = amt.edit_bones.new('Heel.L')
+    heelL.head = (1.5, 0.0, 0.5)
+    heelL.tail = (1.5, 0.5, 0.0)
+    heelL.parent = shinL
+    heelL.use_connect = True
+    heelL.use_deform = False
+    
+    ### RIGHT LEG ###
+    thighR = amt.edit_bones.new('Thigh.R')
+    thighR.head = (-1.5, 0.0, 4.0)
+    thighR.tail = (-1.5, -0.2, 2.0)
+    thighR.parent = torso
+    thighR.use_connect = False
+    
+    shinR = amt.edit_bones.new('Shin.R')
+    shinR.head = (-1.5, -0.2, 2.0)
+    shinR.tail = (-1.5, 0.0, 0.5)
+    shinR.parent = thighR
+    shinR.use_connect = True
+    
+    footR = amt.edit_bones.new('Foot.R')
+    footR.head = (-1.5, 0.0, 0.5)
+    footR.tail = (-1.5, -1.0, 0.0)
+    footR.parent = shinR
+    footR.use_connect = True
+    
+    toeR = amt.edit_bones.new('Toe.R')
+    toeR.head = (-1.5, 0.0, 0.0)
+    toeR.tail = (-1.5, -1.7, 0.0)
+    toeR.parent = footR
+    toeR.use_connect = True
+    
+    heelR = amt.edit_bones.new('Heel.R')
+    heelR.head = (-1.5, 0.0, 0.5)
+    heelR.tail = (-1.5, 0.5, 0.0)
+    heelR.parent = shinR
+    heelR.use_connect = True
+    heelR.use_deform = False
+ 
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return rig
+ 
+ 
+def run(origin):
+    rig = createArmature(origin)
+
+ 
+if __name__ == "__main__":
+    run((0,0,0))

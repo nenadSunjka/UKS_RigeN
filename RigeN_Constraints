@@ -1,0 +1,336 @@
+import bpy, mathutils, math
+
+rig = bpy.data.objects['RigeN']
+rig.data.name = "RigeN.Armature"
+amt = bpy.data.armatures['RigeN.Armature']
+#bpy.ops.outliner.orphans_purge()
+
+
+### BBONE ###
+#rig.data.draw_type = 'BBONE'
+
+#bbone_list_segments = ['Shin.L','Thigh.L', 'Shin.R', 'Thigh.R']
+#for bn in bbone_list_segments :
+#    bone = bpy.context.object.data.bones[bn]
+#    bone.bbone_segments = 3
+
+scn = bpy.context.scene
+scn.objects.active = rig
+scn.update()
+
+bpy.ops.object.mode_set(mode='EDIT')
+
+### Ucitane kosti iz EDIT MODA
+
+torso = amt.edit_bones['Torso']
+
+####### CREATE_BONE_HELPERS FOT SPINE
+spine = amt.edit_bones.new('Spine')
+spine.head = torso.head
+spine.tail = torso.tail
+spine.parent = torso
+spine.roll = torso.roll
+
+spineCtrl = amt.edit_bones.new('Spine.Ctrl')
+spineCtrl.head = spine.tail
+spineCtrl.tail = spine.tail + (spine.tail - spine.head)/4.0
+spineCtrl.parent = torso
+
+#### LEFT FOOT ####
+footL = amt.edit_bones['Foot.L']
+ikStartL = footL.head
+ikEndL = footL.head + (footL.head - footL.tail)/2.0
+
+heelL = amt.edit_bones['Heel.L']
+rollHelperL = (heelL.tail + footL.tail)/2.0
+
+#### RIGHT FOOT ####
+footR = amt.edit_bones['Foot.R']
+ikStartR = footR.head
+ikEndR = footR.head + (footR.head - footR.tail)/2.0
+
+heelR = amt.edit_bones['Heel.R']
+rollHelperR = (heelR.tail + footR.tail)/2.0
+
+####### CREATE LEFT FOOT CONTROL #######
+footCtrlLeft = amt.edit_bones.new('Foot.Ctrl.L')
+footCtrlLeft.head = ikStartL
+footCtrlLeft.tail = (ikEndL.x, ikEndL.y, ikStartL.z)
+footCtrlLeft.parent = None
+footCtrlLeft.use_connect = False
+
+####### CREATE RIGHT FOOT CONTROL #######
+footCtrlRight = amt.edit_bones.new('Foot.Ctrl.R')
+footCtrlRight.head = ikStartR
+footCtrlRight.tail = (ikEndR.x, ikEndR.y, ikStartR.z)
+footCtrlRight.parent = None
+footCtrlRight.use_connect = False
+
+####### CREATE LEFT HEEL CONTROL #######
+heelRollLeft = amt.edit_bones.new('Heel.Roll.L')
+heelRollLeft.head = heelL.tail
+heelRollLeft.tail = rollHelperL
+heelRollLeft.parent = footCtrlLeft
+heelRollLeft.use_connect = False
+
+####### CREATE RIGHT HEEL CONTROL #######
+heelRollRight = amt.edit_bones.new('Heel.Roll.R')
+heelRollRight.head = heelR.tail
+heelRollRight.tail = rollHelperR
+heelRollRight.parent = footCtrlRight
+heelRollRight.use_connect = False
+
+####### CREATE LEFT TOE CONTROL #######
+toeRollLeft = amt.edit_bones.new('Toe.Roll.L')
+toeRollLeft.head = footL.tail
+toeRollLeft.tail = rollHelperL
+toeRollLeft.parent = heelRollLeft
+toeRollLeft.use_connect = False
+
+####### CREATE RIGHT TOE CONTROL #######
+toeRollRight = amt.edit_bones.new('Toe.Roll.R')
+toeRollRight.head = footR.tail
+toeRollRight.tail = rollHelperR
+toeRollRight.parent = heelRollRight
+toeRollRight.use_connect = False
+
+####### LEFT IK #######
+footIKL = amt.edit_bones.new('Foot.IK.L')
+footIKL.head = footL.head
+footIKL.tail = footL.tail
+footIKL.roll = footL.roll
+footIKL.parent = toeRollLeft
+footIKL.use_connect = False
+
+####### RIGHT IK #######
+footIKR = amt.edit_bones.new('Foot.IK.R')
+footIKR.head = footR.head
+footIKR.tail = footR.tail
+footIKR.roll = footR.roll
+footIKR.parent = toeRollRight
+footIKR.use_connect = False
+
+####### LEFT FOOT ROLL #######
+footRollLeft = amt.edit_bones.new('Foot.Roll.L')
+footRollLeft.head = heelL.tail
+footRollLeft.tail = (heelL.tail.x + (heelL.tail.x - footIKL.head.x), heelL.tail.y + (heelL.tail.y - heelL.head.y), heelL.head.z/2.0)
+footRollLeft.parent = footCtrlLeft
+footRollLeft.use_connect = False
+
+####### RIGHT FOOT ROLL #######
+footRollRight = amt.edit_bones.new('Foot.Roll.R')
+footRollRight.head = heelR.tail
+footRollRight.tail = (heelR.tail.x + (heelR.tail.x - footIKR.head.x), heelR.tail.y + (heelR.tail.y - heelR.head.y), heelR.head.z/2.0)
+footRollRight.parent = footCtrlRight
+footRollRight.use_connect = False
+
+# Bone constraints - Armature must be in pose mode #
+bpy.ops.object.mode_set(mode='POSE')
+
+footCtrlL = rig.pose.bones['Foot.Ctrl.L']
+footCtrlL.rotation_mode = 'XYZ'
+
+torsoPose = rig.pose.bones['Torso']
+
+spinePose = rig.pose.bones['Spine']
+
+spineCtrlPose = rig.pose.bones['Spine.Ctrl']
+spineCtrlPose.lock_location[0] = True
+spineCtrlPose.lock_location[2] = True
+spineCtrlPose.lock_rotation[0] = True # x
+spineCtrlPose.lock_rotation[2] = True # z
+
+spineLimiter = (spine.tail-spine.head)/4.0
+spineLimiterLength = math.sqrt((spineLimiter[0]**2)+(spineLimiter[1]**2)+(spineLimiter[2]**2))
+
+spineLimit = spineCtrlPose.constraints.new('LIMIT_LOCATION')
+spineLimit.name = 'Spine.Limit.Stretch'
+spineLimit.owner_space = 'LOCAL'
+spineLimit.use_min_y = True
+spineLimit.min_y = -3*spineLimiterLength
+spineLimit.use_max_y = True
+spineLimit.max_y = spineLimiterLength
+
+spineStretch = spinePose.constraints.new('STRETCH_TO')
+spineStretch.target = rig
+spineStretch.subtarget = 'Spine.Ctrl'
+
+spineRotation = spinePose.constraints.new('COPY_ROTATION')
+spineRotation.target = rig
+spineRotation.subtarget = 'Spine.Ctrl'
+spineRotation.owner_space = 'LOCAL'
+spineRotation.target_space = 'LOCAL'
+    
+### IK.Constraint.Left ###
+shinL = rig.pose.bones['Shin.L']
+IKLeftFoot = shinL.constraints.new('IK')
+IKLeftFoot.name = 'IK.L'
+IKLeftFoot.target = rig
+IKLeftFoot.subtarget = 'Foot.IK.L'
+IKLeftFoot.chain_count = 2
+
+### IK.Constraint.Right ###
+shinR = rig.pose.bones['Shin.R']
+IKRightFoot = shinR.constraints.new('IK')
+IKRightFoot.name = 'IK.R'
+IKRightFoot.target = rig
+IKRightFoot.subtarget = 'Foot.IK.R'
+IKRightFoot.chain_count = 2
+
+### CR.Constraint.Left ###
+footL = rig.pose.bones['Foot.L']
+footCopRotL = footL.constraints.new('COPY_ROTATION')
+footCopRotL.name = 'Foot.Copy.Rotation.L'
+footCopRotL.target = rig
+footCopRotL.subtarget = 'Foot.IK.L'
+footCopRotL.owner_space = 'WORLD'
+footCopRotL.target_space = 'WORLD'
+
+### CR.Constraint.Right ###
+footR = rig.pose.bones['Foot.R']
+footCopRotR = footR.constraints.new('COPY_ROTATION')
+footCopRotR.name = 'Foot.Copy.Rotation.R'
+footCopRotR.target = rig
+footCopRotR.subtarget = 'Foot.IK.R'
+footCopRotR.owner_space = 'WORLD'
+footCopRotR.target_space = 'WORLD'
+
+toeRollLeft = rig.pose.bones['Toe.Roll.L']
+toeCopRotL = toeRollLeft.constraints.new('COPY_ROTATION')
+toeCopRotL.name = 'Toe.Copy.Rotation.L'
+toeCopRotL.target = rig
+toeCopRotL.subtarget = 'Foot.Roll.L'
+toeCopRotL.owner_space = 'LOCAL'
+toeCopRotL.target_space = 'LOCAL'
+toeCopRotL.use_y = False
+toeCopRotL.use_z = False
+
+toeRollRight = rig.pose.bones['Toe.Roll.R']
+toeCopRotR = toeRollRight.constraints.new('COPY_ROTATION')
+toeCopRotR.name = 'Toe.Copy.Rotation.R'
+toeCopRotR.target = rig
+toeCopRotR.subtarget = 'Foot.Roll.R'
+toeCopRotR.owner_space = 'LOCAL'
+toeCopRotR.target_space = 'LOCAL'
+toeCopRotR.use_y = False
+toeCopRotR.use_z = False
+
+### LR.Constraint.Left ###
+toeLimitRotL = toeRollLeft.constraints.new('LIMIT_ROTATION')
+toeLimitRotL.use_limit_x = True
+toeLimitRotL.min_x = 0.0
+toeLimitRotL.max_x = 0.610865
+toeLimitRotL.owner_space = 'LOCAL'
+
+### LR.Constraint.Right ###
+toeLimitRotR = toeRollRight.constraints.new('LIMIT_ROTATION')
+toeLimitRotR.use_limit_x = True
+toeLimitRotR.min_x = 0.0
+toeLimitRotR.max_x = 0.610865
+toeLimitRotR.owner_space = 'LOCAL'
+
+heelRollLeft = rig.pose.bones['Heel.Roll.L']
+heelRollRight = rig.pose.bones['Heel.Roll.R']
+
+heelCopRotL = heelRollLeft.constraints.new('COPY_ROTATION')
+heelCopRotL.name = 'Toe.Copy.Rotation.L'
+heelCopRotL.target = rig
+heelCopRotL.subtarget = 'Foot.Roll.L'
+heelCopRotL.owner_space = 'LOCAL'
+heelCopRotL.target_space = 'LOCAL'
+heelCopRotL.invert_x = True
+heelCopRotL.use_y = False
+heelCopRotL.use_z = False
+
+heelCopRotR = heelRollRight.constraints.new('COPY_ROTATION')
+heelCopRotR.name = 'Toe.Copy.Rotation.R'
+heelCopRotR.target = rig
+heelCopRotR.subtarget = 'Foot.Roll.R'
+heelCopRotR.owner_space = 'LOCAL'
+heelCopRotR.target_space = 'LOCAL'
+heelCopRotR.invert_x = True
+heelCopRotR.use_y = False
+heelCopRotR.use_z = False
+
+heelLimitRotL = heelRollLeft.constraints.new('LIMIT_ROTATION')
+heelLimitRotL.use_limit_x = True
+heelLimitRotL.min_x = 0.0
+heelLimitRotL.max_x = 0.610865
+heelLimitRotL.owner_space = 'LOCAL'
+
+heelLimitRotR = heelRollRight.constraints.new('LIMIT_ROTATION')
+heelLimitRotR.use_limit_x = True
+heelLimitRotR.min_x = 0.0
+heelLimitRotR.max_x = 0.610865
+heelLimitRotR.owner_space = 'LOCAL'
+
+toeL = rig.pose.bones['Toe.L']
+toeCopRotL = toeL.constraints.new('COPY_ROTATION')
+toeCopRotL.name = 'Toe.Copy.Rotation.L'
+toeCopRotL.target = rig
+toeCopRotL.subtarget = 'Toe.Roll.L'
+toeCopRotL.owner_space = 'LOCAL'
+toeCopRotL.target_space = 'LOCAL'
+toeCopRotL.use_offset = True
+
+toeR = rig.pose.bones['Toe.R']
+toeCopRotR = toeR.constraints.new('COPY_ROTATION')
+toeCopRotR.name = 'Toe.Copy.Rotation.R'
+toeCopRotR.target = rig
+toeCopRotR.subtarget = 'Toe.Roll.R'
+toeCopRotR.owner_space = 'LOCAL'
+toeCopRotR.target_space = 'LOCAL'
+toeCopRotR.use_offset = True
+
+footRollLeft = rig.pose.bones['Foot.Roll.L']
+footRollLeft.rotation_mode = 'XYZ'
+footRollLeft.lock_rotation[1] = True
+footRollLeft.lock_rotation[2] = True
+footRollLimitRotL = footRollLeft.constraints.new('LIMIT_ROTATION')
+footRollLimitRotL.name = 'Foot.Roll.Limit.Rotation.L'
+footRollLimitRotL.use_limit_x = True
+footRollLimitRotL.min_x = -0.610865
+footRollLimitRotL.max_x = 0.610865
+footRollLimitRotL.owner_space = 'LOCAL'
+
+footRollRight = rig.pose.bones['Foot.Roll.R']
+footRollRight.rotation_mode = 'XYZ'
+footRollRight.lock_rotation[1] = True
+footRollRight.lock_rotation[2] = True
+footRollLimitRotR = footRollRight.constraints.new('LIMIT_ROTATION')
+footRollLimitRotR.name = 'Foot.Roll.Limit.Rotation.R'
+footRollLimitRotR.use_limit_x = True
+footRollLimitRotR.min_x = -0.610865
+footRollLimitRotR.max_x = 0.610865
+footRollLimitRotR.owner_space = 'LOCAL'
+
+### Kosti kojima ne treba DEFROM
+bone_list_deform = ['Foot.IK.L', 'Foot.Ctrl.L', 'Foot.Roll.L', 'Toe.Roll.L', 'Heel.Roll.L', 'Foot.IK.R', 'Foot.Ctrl.R', 'Foot.Roll.R', 'Toe.Roll.R', 'Heel.Roll.R', 'Torso', 'Spine.Ctrl']
+for bn in bone_list_deform :
+    bone = bpy.context.object.data.bones[bn]
+    bone.use_deform = False
+
+### Zakljucavanje mogucnosti skaliranja
+bone_list_lock_scale = ['Foot.L', 'Heel.L', 'Toe.L', 'Shin.L', 'Thigh.L', 'Foot.Roll.L','Foot.Ctrl.L', 'Foot.IK.L', 'Toe.Roll.L', 'Heel.Roll.L', 'Foot.Roll.L', 'Foot.R', 'Heel.R', 'Toe.R', 'Shin.R', 'Thigh.R', 'Foot.Roll.R','Foot.Ctrl.R', 'Foot.IK.R', 'Toe.Roll.R', 'Heel.Roll.R', 'Foot.Roll.R', 'Torso', 'Spine.Ctrl']
+for bn in bone_list_lock_scale :
+    bone = bpy.context.active_object.pose.bones[bn]
+    bone.lock_scale[0] = True # x
+    bone.lock_scale[1] = True # y
+    bone.lock_scale[2] = True # z
+
+### Zakljucavanje mogucnosti rotiranja    
+bone_list_lock_rotation = ['Thigh.R', 'Thigh.L']
+for bn in bone_list_lock_rotation :
+    bone = bpy.context.active_object.pose.bones[bn]
+    bone.lock_rotation[0] = True # x
+    bone.lock_rotation[1] = True # y
+    bone.lock_rotation[2] = True # z
+
+### Zakljucavanje mogucnosti transliranja
+bone_list_lock_location = ['Foot.Roll.L', 'Foot.Roll.R']
+for bn in bone_list_lock_location :
+    bone = bpy.context.active_object.pose.bones[bn]
+    bone.lock_location[0] = True # x
+    bone.lock_location[1] = True # y
+    bone.lock_location[2] = True # z
+    
