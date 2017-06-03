@@ -3,16 +3,6 @@ import bpy, mathutils, math
 rig = bpy.data.objects['RigeN']
 rig.data.name = "RigeN.Armature"
 amt = bpy.data.armatures['RigeN.Armature']
-#bpy.ops.outliner.orphans_purge()
-
-
-### BBONE ###
-#rig.data.draw_type = 'BBONE'
-
-#bbone_list_segments = ['Shin.L','Thigh.L', 'Shin.R', 'Thigh.R']
-#for bn in bbone_list_segments :
-#    bone = bpy.context.object.data.bones[bn]
-#    bone.bbone_segments = 3
 
 scn = bpy.context.scene
 scn.objects.active = rig
