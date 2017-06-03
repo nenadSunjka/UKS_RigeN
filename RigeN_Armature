@@ -15,7 +15,6 @@ def createArmature(origin):
  
     # Create bones
     bpy.ops.object.editmode_toggle()
-    #original does not work??!!    bpy.ops.object.mode_set(mode='EDIT')
     bpy.context.object.data.use_mirror_x = True
 
     torso = amt.edit_bones.new('Torso')
